@@ -5,14 +5,16 @@ StarCraft: Brood War Commentary Generator for SSCAIT
 
 *   Install 'TTS' command: `sudo pip3 install TTS` (follow instructions at [https://github.com/coqui-ai/TTS](https://github.com/coqui-ai/TTS))
 *   Install 'ffmpeg': `sudo apt install ffmpeg`
+*   Install Chrome, so you have /usr/bin/google-chrome-stable available (for Ubuntu follow instructions at [https://itsfoss.com/install-chrome-ubuntu/](https://itsfoss.com/install-chrome-ubuntu/))
 *   Install NodeJS 18+
 *   Run `npm install` to install server dependencies
 *   Copy 'settings.js.example' to 'settings.js' and configure OpenAI credentials
 
 ### Usage
 
-*   Start the server by running `npm run listen`
+*   Start the server by running `npm run listen` (or you might need something like `export DISPLAY=:0 && npm run listen &` if you're running it via SSH)
 *   Send game situation descriptions via GET HTTP requests to receive a .WAV file of the commentary
+*   Warning: the first request you send after the installation will be much slower than the following ones, because the server will need to download the TTS model. It will probably time out.
 
 #### GET parameters:
 
