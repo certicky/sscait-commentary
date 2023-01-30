@@ -122,9 +122,10 @@ app.get('/', async (req, res) => {
   }
 })
 
-app.listen(listenPort, () => {
+const server = app.listen(listenPort, () => {
   console.log('Server started on port', listenPort)
 })
+server.setTimeout(60000) // set timeout limit to 60s
 
 
 /*
