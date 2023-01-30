@@ -1,7 +1,8 @@
 {
   "type": "module",
   "scripts": {
-    "listen": "node index.js"
+    "listen": "node index.js",
+    "listenSSH": "export DISPLAY=:0 && node index.js"
   },
   "dependencies": {
     "chatgpt": "^3.5.1",
