@@ -1,8 +1,13 @@
 StarCraft: Brood War Commentary Generator for SSCAIT
 ----------------------------------------------------
 
+SSCAIT tournament module ([https://github.com/certicky/sscait-tournamentmodule](https://github.com/certicky/sscait-tournamentmodule)) has a component that regularly describes current in-game situation
+and sends it to this server. This server then generates a natural language spoken word commentary for that situation description and sends back a .WAV file, so the tournament module
+can play it during the running game.
+
 ### Installation
 
+*   Make sure you have an Nvidia graphics card + CUDA support. The system should work without it, but TTS will be too slow to be used in real time.
 *   Install 'TTS' command: `sudo pip3 install TTS` (follow instructions at [https://github.com/coqui-ai/TTS](https://github.com/coqui-ai/TTS))
 *   Install 'ffmpeg': `sudo apt install ffmpeg`
 *   Install Chrome, so you have /usr/bin/google-chrome-stable available (for Ubuntu follow instructions at [https://itsfoss.com/install-chrome-ubuntu/](https://itsfoss.com/install-chrome-ubuntu/))
