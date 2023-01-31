@@ -9,7 +9,8 @@ can play it during the running game.
 
 *   Make sure you have an Nvidia graphics card + CUDA support. The system should work without it, but TTS will be too slow to be used in real time.
 *   Install 'TTS' command: `sudo pip3 install TTS` (follow instructions at [https://github.com/coqui-ai/TTS](https://github.com/coqui-ai/TTS))
-*   Install 'ffmpeg': `sudo apt install ffmpeg`
+*   Install 'ffmpeg' (used to make the speech faster): `sudo apt install ffmpeg`
+*   Install 'sox' (used to lower the pitch of a speech a bit): `sudo apt install sox`
 *   Install Chrome, so you have /usr/bin/google-chrome-stable available (for Ubuntu follow instructions at [https://itsfoss.com/install-chrome-ubuntu/](https://itsfoss.com/install-chrome-ubuntu/))
 *   Install NodeJS 18+
 *   Run `npm install` to install server dependencies

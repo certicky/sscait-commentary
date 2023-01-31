@@ -110,9 +110,9 @@ app.get('/', async (req, res) => {
     // $ tts --text "..." --out_path /tmp/commentary.wav --model_name tts_models/en/ljspeech/glow-tts
     await execSync('tts --text "'+situationNaturalLanguageText+'" --out_path /tmp/commentary.wav --model_name tts_models/en/ljspeech/glow-tts', { stdio: 'inherit' })
 
-    // make out.wav faster using ffmpeg
-    // $ ffmpeg -y -i /tmp/commentary.wav -filter:a "atempo=1.35" -vn /tmp/out.wav
-    await execSync('ffmpeg -y -i /tmp/commentary.wav -filter:a "atempo=1.35" -vn /tmp/out.wav', { stdio: 'inherit' })
+    // make out.wav faster and lower pitch using sox and ffmpeg (it just sounds a bit better this way)
+    // $ sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav pitch -350 && ffmpeg -y -i /tmp/commentary-pitch-shifted.wav -filter:a "atempo=1.4" -vn /tmp/out.wav
+    await execSync('sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav pitch -350 && ffmpeg -y -i /tmp/commentary-pitch-shifted.wav -filter:a "atempo=1.4" -vn /tmp/out.wav', { stdio: 'inherit' })
 
     // send the finished file to client
     res.set('Content-Type', 'audio/wav');
