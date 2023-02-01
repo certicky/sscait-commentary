@@ -1,3 +1,2 @@
-export const openAIEmail = '<YOUR OPEN AI ACCOUNT EMAIL>'
-export const openAIPassword = '<YOUR OPEN AI ACCOUNT PASSWORD>'
 export const listenPort = 3000
+export const openAIAPIKey = '<YOUR OPENAI API KEY>'

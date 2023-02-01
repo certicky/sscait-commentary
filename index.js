@@ -1,6 +1,10 @@
-import {
-  ChatGPTAPIBrowser
-} from 'chatgpt'
+// EXTERNAL TOOLS:
+//
+// ChatGPT:         https://github.com/transitive-bullshit/chatgpt-api
+// Text-To-Speech:  https://github.com/coqui-ai/TTS
+//
+
+import { ChatGPTAPI } from 'chatgpt'
 import express from 'express'
 import http from 'http'
 import fs from 'fs'
@@ -10,18 +14,16 @@ import {
 } from 'child_process'
 import process from 'process'
 import {
-  openAIEmail,
-  openAIPassword,
+  openAIAPIKey,
   listenPort
 } from './settings.js'
 
 // GLOBAL VARS
-const chatGPTAPI = new ChatGPTAPIBrowser({ email: openAIEmail, password: openAIPassword, markdown: false })
+const chatGPTAPI = new ChatGPTAPI({ apiKey: openAIAPIKey })
 const gameIdToConversationIdMap = {}
 let lastMessageId = null
 
 // log in to ChatGPT and start a session
-await chatGPTAPI.initSession()
 console.log('ChatGPT session started.')
 
 // start a TTS server in the background and let it initialize the model
@@ -39,6 +41,7 @@ await spawn('tts-server', [
   detached: true
 }).unref()
 await process.on('exit', (code) => { execSync('killall tts-server', { stdio: 'ignore' }) })
+console.log('TTS server starting at port', (listenPort + 1))
 
 // converts a situation in JSON array string into a string that will be sent to ChatGPT
 function situationJSONToString (situation) {
@@ -72,7 +75,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
       gameIdToConversationIdMap[gameId] = res.conversationId
 
       // return the response from ChatGPT
-      return sanitizeStringForTTS(res.response)
+      return sanitizeStringForTTS(res.text)
     } else {
       // if we already know the ChatGPT conversationId for this gameId, use it when we send the message to ChatGPT
       const res = await chatGPTAPI.sendMessage(situationJSONToString(situation), {
@@ -82,7 +85,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
       lastMessageId = res.messageId
 
       // return the response from ChatGPT
-      return sanitizeStringForTTS(res.response)
+      return sanitizeStringForTTS(res.text)
     }
   } catch (e) {
     console.log('There was an error:', e)
@@ -123,7 +126,9 @@ app.get('/', async (req, res) => {
   }
 
   const situationNaturalLanguageText = await getTextDescriptionOfSituation(gameId, situation)
-  console.log(situationNaturalLanguageText)
+  console.log('========================================')
+  console.log('Text from ChatGPT:\n', situationNaturalLanguageText)
+  console.log('========================================')
 
   try {
     // query local TTS server to get commentary.wav
