@@ -2,9 +2,13 @@ import {
   ChatGPTAPIBrowser
 } from 'chatgpt'
 import express from 'express'
+import http from 'http'
+import fs from 'fs'
 import {
-  execSync
+  execSync,
+  spawn
 } from 'child_process'
+import process from 'process'
 import {
   openAIEmail,
   openAIPassword,
@@ -20,6 +24,22 @@ let lastMessageId = null
 await chatGPTAPI.initSession()
 console.log('ChatGPT session started.')
 
+// start a TTS server in the background and let it initialize the model
+// note: we could just call 'tts' CLI command without starting a server,
+//       but then it would have to init the model for each call, which is
+//       much slower.
+await execSync('if pgrep tts-server; then pkill tts-server; fi', { stdio: 'inherit' }) // kill previous instances of tts-server
+await spawn('tts-server', [
+  '--model_name=tts_models/en/ljspeech/glow-tts',
+  '--port=' + (listenPort + 1),
+  '--use_cuda=true',
+  '--debug=false'
+], {
+  stdio: 'ignore',
+  detached: true
+}).unref()
+await process.on('exit', (code) => { execSync('killall tts-server', { stdio: 'ignore' }) })
+
 // converts a situation in JSON array string into a string that will be sent to ChatGPT
 function situationJSONToString (situation) {
   return 'situation:\n' + JSON.parse(situation).map(s => '- ' + s).join('\n')
@@ -34,7 +54,7 @@ function sanitizeStringForTTS (s) {
 }
 
 // get natural language description of a situation from ChatGPT
-async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed = 1) {
+async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed = 2) {
   try {
     // if gameId changed just now, start a new conversation for this new game
     if (!Object.keys(gameIdToConversationIdMap).includes(gameId)) {
@@ -106,17 +126,29 @@ app.get('/', async (req, res) => {
   console.log(situationNaturalLanguageText)
 
   try {
-    // run TTS to create commentary.wav
-    // $ tts --text "..." --out_path /tmp/commentary.wav --model_name tts_models/en/ljspeech/glow-tts
-    await execSync('tts --text "'+situationNaturalLanguageText+'" --out_path /tmp/commentary.wav --model_name tts_models/en/ljspeech/glow-tts', { stdio: 'inherit' })
+    // query local TTS server to get commentary.wav
+    const f = await new Promise((resolve, reject) => {
+      http.get('http://localhost:' + (listenPort + 1) + '/api/tts?text=' + encodeURIComponent(situationNaturalLanguageText), response => {
+        if (response.statusCode === 200) {
+          const file = fs.createWriteStream('/tmp/commentary.wav')
+          response.pipe(file)
+          file.on('finish', () => {
+            file.close(resolve)
+          })
+        } else {
+          console.error(`Couldn't download WAV file: ${response.statusCode}`)
+          reject(new Error(`HTTP status code: ${response.statusCode}`))
+        }
+      })
+    })
 
     // make out.wav faster and lower pitch using sox and ffmpeg (it just sounds a bit better this way)
     // $ sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav pitch -350 && ffmpeg -y -i /tmp/commentary-pitch-shifted.wav -filter:a "atempo=1.4" -vn /tmp/out.wav
     await execSync('sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav pitch -350 && ffmpeg -y -i /tmp/commentary-pitch-shifted.wav -filter:a "atempo=1.4" -vn /tmp/out.wav', { stdio: 'inherit' })
 
     // send the finished file to client
-    res.set('Content-Type', 'audio/wav');
-    res.sendFile('/tmp/out.wav');
+    res.set('Content-Type', 'audio/wav')
+    res.sendFile('/tmp/out.wav')
   } catch (err) {
     return res.status(500).send({ error: err.message })
   }
@@ -126,7 +158,6 @@ const server = app.listen(listenPort, () => {
   console.log('Server started on port', listenPort)
 })
 server.setTimeout(60000) // set timeout limit to 60s
-
 
 /*
 Dev notes:
