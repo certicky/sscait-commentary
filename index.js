@@ -147,9 +147,8 @@ app.get('/', async (req, res) => {
       })
     })
 
-    // make out.wav faster and lower pitch using sox and ffmpeg (it just sounds a bit better this way)
-    // $ sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav pitch -350 && ffmpeg -y -i /tmp/commentary-pitch-shifted.wav -filter:a "atempo=1.4" -vn /tmp/out.wav
-    await execSync('sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav pitch -350 && ffmpeg -y -i /tmp/commentary-pitch-shifted.wav -filter:a "atempo=1.4" -vn /tmp/out.wav', { stdio: 'inherit' })
+    // make out.wav faster and lower pitch using sox (it just sounds a bit better this way)
+    await execSync('sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav equalizer 4.4k 8q +20 pitch -240 tempo -s 1.3', { stdio: 'inherit' })
 
     // send the finished file to client
     res.set('Content-Type', 'audio/wav')
