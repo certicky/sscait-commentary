@@ -125,9 +125,13 @@ app.get('/', async (req, res) => {
     return res.status(400).send({ error: 'situation should be a valid JSON' })
   }
 
-  const situationNaturalLanguageText = await getTextDescriptionOfSituation(gameId, situation)
   console.log('========================================')
-  console.log('Text from ChatGPT:\n', situationNaturalLanguageText)
+  console.log(situation)
+  console.log('...')
+
+  const situationNaturalLanguageText = await getTextDescriptionOfSituation(gameId, situation)
+
+  console.log(situationNaturalLanguageText)
   console.log('========================================')
 
   try {
@@ -148,7 +152,7 @@ app.get('/', async (req, res) => {
     })
 
     // make out.wav faster and lower pitch using sox (it just sounds a bit better this way)
-    await execSync('sox /tmp/commentary.wav /tmp/commentary-pitch-shifted.wav equalizer 4.4k 8q +20 pitch -240 tempo -s 1.3', { stdio: 'inherit' })
+    await execSync('sox /tmp/commentary.wav /tmp/out.wav equalizer 4.4k 8q +20 pitch -240 tempo -s 1.3', { stdio: 'inherit' })
 
     // send the finished file to client
     res.set('Content-Type', 'audio/wav')
