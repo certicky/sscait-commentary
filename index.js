@@ -152,7 +152,7 @@ app.get('/', async (req, res) => {
     })
 
     // make out.wav faster and lower pitch using sox (it just sounds a bit better this way)
-    await execSync('sox /tmp/commentary.wav /tmp/out.wav equalizer 4.4k 8q +20 pitch -240 tempo -s 1.3', { stdio: 'inherit' })
+    await execSync('sox /tmp/commentary.wav /tmp/out.wav pitch -350 tempo -s 1.35', { stdio: 'inherit' })
 
     // send the finished file to client
     res.set('Content-Type', 'audio/wav')
