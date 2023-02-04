@@ -41,7 +41,7 @@ await spawn('tts-server', [
   detached: true
 }).unref()
 await process.on('exit', (code) => { execSync('killall tts-server', { stdio: 'ignore' }) })
-log('TTS server starting at port', (listenPort + 1))
+log('TTS server starting at port ' + (listenPort + 1))
 
 // custom log function that logs text in a file of max. 1000 lines and also prints it
 function log(text) {
@@ -109,7 +109,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         const res = await chatGPTAPI.sendMessage(
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
           'I will provide a brief summary of current in-game situation and you use that information to cast the game.' + '\n' +
-          'Reply with 80 words or less.' + '\n' + '\n' +
+          'Reply with 55 words or less.' + '\n' + '\n' +
           stringInputForChatGPT)
 
         // save the id of this message to our map so we can continue the message chain from here
@@ -135,7 +135,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
       return null
     }
   } catch (e) {
-    log('There was an error:', e)
+    log('There was an error: ' + e)
     if (retriesAllowed > 0) {
       log('Retrying...')
       await chatGPTAPI.refreshSession()
@@ -226,7 +226,7 @@ app.get('/', async (req, res) => {
 
 // start the server
 const server = app.listen(listenPort, () => {
-  log('Server started on port', listenPort)
+  log('Server started on port ' + listenPort)
 })
 server.setTimeout(60000) // set timeout limit to 60s
 
