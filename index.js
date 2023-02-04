@@ -20,8 +20,7 @@ import {
 
 // GLOBAL VARS
 const chatGPTAPI = new ChatGPTAPI({ apiKey: openAIAPIKey })
-const gameIdToConversationIdMap = {}
-let lastMessageId = null
+const gameIdToLastMessageIdMap = {}
 
 // log in to ChatGPT and start a session
 log('ChatGPT session started.')
@@ -75,30 +74,28 @@ function sanitizeStringForTTS (s) {
 // get natural language description of a situation from ChatGPT
 async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed = 2) {
   try {
-    // if gameId changed just now, start a new conversation for this new game
-    if (!Object.keys(gameIdToConversationIdMap).includes(gameId)) {
-      // send an initial message with conversationId set to null to init a new conversation
+    // if gameId changed just now, start a new message chain (conversation) for this new game
+    if (!Object.keys(gameIdToLastMessageIdMap).includes(gameId)) {
+      // send an initial message with parentMessageId set to null to init a new message chain (conversation)
       const res = await chatGPTAPI.sendMessage(
         'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
         'I will provide a brief summary of current in-game situation and you use that information to cast the game.' + '\n' +
         'Reply with 80 words or less.' + '\n' + '\n' +
-        situationJSONToString(situation), {
-          conversationId: null
-        })
-      lastMessageId = res.messageId
+        situationJSONToString(situation))
 
-      // save the conversationId of this new conversation in our map
-      gameIdToConversationIdMap[gameId] = res.conversationId
+      // save the id of this message to our map so we can continue the message chain from here
+      gameIdToLastMessageIdMap[gameId] = res.id
 
       // return the response from ChatGPT
       return sanitizeStringForTTS(res.text)
     } else {
-      // if we already know the ChatGPT conversationId for this gameId, use it when we send the message to ChatGPT
+      // if we already have the ChatGPT id for the previous message for this gameId, use it when we send the message to ChatGPT
       const res = await chatGPTAPI.sendMessage(situationJSONToString(situation), {
-        conversationId: gameIdToConversationIdMap[gameId],
-        parentMessageId: lastMessageId
+        parentMessageId: gameIdToLastMessageIdMap[gameId]
       })
-      lastMessageId = res.messageId
+
+      // save the id of this message to our map so we can continue the message chain from here
+      gameIdToLastMessageIdMap[gameId] = res.id
 
       // return the response from ChatGPT
       return sanitizeStringForTTS(res.text)
@@ -130,7 +127,7 @@ app.get('/', async (req, res) => {
   }
 
   log('==========================================================')
-  log('gameId: ' + gameId + ' conversationId: ' + gameIdToConversationIdMap[gameId] + ' lastMessageId: ' + lastMessageId)
+  log('gameId: ' + gameId + ' last message in msg chain: ' + gameIdToLastMessageIdMap[gameId])
   log(req.originalUrl)
   log('==========================================================')
   log(situation)
