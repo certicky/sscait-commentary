@@ -24,7 +24,7 @@ const gameIdToConversationIdMap = {}
 let lastMessageId = null
 
 // log in to ChatGPT and start a session
-console.log('ChatGPT session started.')
+log('ChatGPT session started.')
 
 // start a TTS server in the background and let it initialize the model
 // note: we could just call 'tts' CLI command without starting a server,
@@ -41,7 +41,23 @@ await spawn('tts-server', [
   detached: true
 }).unref()
 await process.on('exit', (code) => { execSync('killall tts-server', { stdio: 'ignore' }) })
-console.log('TTS server starting at port', (listenPort + 1))
+log('TTS server starting at port', (listenPort + 1))
+
+// custom log function that logs text in a file of max. 1000 lines and also prints it
+function log(text) {
+  try {
+    let data = fs.readFileSync("log.txt", "utf-8")
+    let lines = data.split("\n")
+    if (lines.length >= 1000) {
+      lines = lines.slice(lines.length - 999)
+    }
+    lines.push(text)
+    fs.writeFileSync("log.txt", lines.join("\n"))
+    console.log(text)
+  } catch (err) {
+    console.error(err)
+  }
+}
 
 // converts a situation in JSON array string into a string that will be sent to ChatGPT
 function situationJSONToString (situation) {
@@ -88,9 +104,9 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
       return sanitizeStringForTTS(res.text)
     }
   } catch (e) {
-    console.log('There was an error:', e)
+    log('There was an error:', e)
     if (retriesAllowed > 0) {
-      console.log('Retrying...')
+      log('Retrying...')
       await chatGPTAPI.refreshSession()
       return await getTextDescriptionOfSituation(gameId, situation, retriesAllowed - 1)
     }
@@ -125,14 +141,16 @@ app.get('/', async (req, res) => {
     return res.status(400).send({ error: 'situation should be a valid JSON' })
   }
 
-  console.log('========================================')
-  console.log(situation)
-  console.log('...')
+  log('========================================')
+  log(gameId)
+  log('========================================')
+  log(situation)
+  log('\n...\n')
 
   const situationNaturalLanguageText = await getTextDescriptionOfSituation(gameId, situation)
 
-  console.log(situationNaturalLanguageText)
-  console.log('========================================')
+  log(situationNaturalLanguageText)
+  log('========================================')
 
   try {
     // query local TTS server to get commentary.wav
@@ -145,7 +163,7 @@ app.get('/', async (req, res) => {
             file.close(resolve)
           })
         } else {
-          console.error(`Couldn't download WAV file: ${response.statusCode}`)
+          log(`Couldn't download WAV file: ${response.statusCode}`)
           reject(new Error(`HTTP status code: ${response.statusCode}`))
         }
       })
@@ -163,7 +181,7 @@ app.get('/', async (req, res) => {
 })
 
 const server = app.listen(listenPort, () => {
-  console.log('Server started on port', listenPort)
+  log('Server started on port', listenPort)
 })
 server.setTimeout(60000) // set timeout limit to 60s
 
