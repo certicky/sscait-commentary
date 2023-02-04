@@ -129,9 +129,10 @@ app.get('/', async (req, res) => {
     return res.status(400).send({ error: 'situation param is required' })
   }
 
-  log('========================================')
-  log(gameId)
-  log('========================================')
+  log('==========================================================')
+  log('gameId: ' + gameId + ' conversationId: ' + gameIdToConversationIdMap[gameId] + ' lastMessageId: ' + lastMessageId)
+  log(req.originalUrl)
+  log('==========================================================')
   log(situation)
   log('\n ...\n')
 
@@ -152,7 +153,7 @@ app.get('/', async (req, res) => {
   const situationNaturalLanguageText = await getTextDescriptionOfSituation(gameId, situation)
 
   log(situationNaturalLanguageText)
-  log('========================================')
+  log('==========================================================')
 
   try {
     // query local TTS server to get commentary.wav
