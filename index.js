@@ -120,12 +120,20 @@ app.get('/', async (req, res) => {
   const { gameId, situation } = req.query
 
   if (!gameId) {
+    log('Request error: gameId param is required')
     return res.status(400).send({ error: 'gameId param is required' })
   }
 
   if (!situation) {
+    log('Request error: situation param is required')
     return res.status(400).send({ error: 'situation param is required' })
   }
+
+  log('========================================')
+  log(gameId)
+  log('========================================')
+  log(situation)
+  log('\n ...\n')
 
   try {
     const situationArray = JSON.parse(situation)
@@ -140,12 +148,6 @@ app.get('/', async (req, res) => {
   } catch (err) {
     return res.status(400).send({ error: 'situation should be a valid JSON' })
   }
-
-  log('========================================')
-  log(gameId)
-  log('========================================')
-  log(situation)
-  log('\n...\n')
 
   const situationNaturalLanguageText = await getTextDescriptionOfSituation(gameId, situation)
 
