@@ -151,7 +151,6 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
     log('There was an error: ' + e)
     if (retriesAllowed > 0) {
       log('Retrying...')
-      await chatGPTAPI.refreshSession()
       return await getTextDescriptionOfSituation(gameId, situation, retriesAllowed - 1)
     }
     return null
