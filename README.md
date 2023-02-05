@@ -44,3 +44,16 @@ can play it during the running game.
 **RESPONSE:** `out.wav` file with spoken text:
 
 > At 4 minutes in, the game is heating up. Dragon builds a Command Center and Barracks for Marines, while Steamhammer trains 6 Zerglings. Early aggression could foreshadow what's to come.
+
+### Deployment using PM2
+
+To deploy the service on your server, you can use a process manager like PM2, which can help keep the service running even if the terminal is closed or the machine is restarted.
+
+Here is an outline of the steps:
+
+1. Install PM2: Run the following command in your terminal: `npm install pm2 -g`
+2. Start your application: Run the following command in your terminal: `pm2 start index.js`
+3. Save the PM2 process list: Run the following command in your terminal: `pm2 save`
+4. Set PM2 to run on startup: Run the following command in your terminal: `pm2 startup`
+
+This will configure PM2 to start your application automatically on machine boot.
