@@ -94,6 +94,7 @@ function sanitizeStringForTTS (s, gameId) {
   let ret = s
     .replace(/Starcraft: Brood War/ig, 'Starcraft') // remove "Brood War" part from the game name, because noone says it. still, we need to include it in ChatGPT input, because it talks about Marauders and Medivacs if we don't :)
     .replace(/Hydralisk/ig, 'Hi-dra-lisk')
+    .replace(/lead/ig, 'leed')
     .replace(/Patreon/ig, 'Pae-treon')
     .replaceAll(', ', ' ') // remove commas from the output, because TTS interprets them as uncomfortably long pauses
     .replaceAll('"', '') // remove the surrounding ""
