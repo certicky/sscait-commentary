@@ -22,6 +22,7 @@ import {
 const chatGPTAPI = new ChatGPTAPI({ apiKey: openAIAPIKey })
 const gameIdToLastMessageIdMap = {}
 const fillerCooldownUntil = {}
+const whoWillComeOutOnTopCounter = {}
 
 // log in to ChatGPT and start a session
 log('ChatGPT session started.')
@@ -71,7 +72,7 @@ function situationJSONToString (situation) {
     // if the array of situation events is empty, return some time filler bs
     const timeFillers = [
       { id: 'fillerSummary', cooldownSeconds: 60, text: '(now summarize the game so far to fill some time)' },
-      { id: 'fillerCliche', cooldownSeconds: 60, text: '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation. but don\' ask who will come out on top if you\'ve said it already.)' },
+      { id: 'fillerCliche', cooldownSeconds: 60, text: '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation.)' },
       { id: 'fillerPatreon', cooldownSeconds: 60*60, text: '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
       { id: 'fillerTwitchYoutube', cooldownSeconds: 60*45, text: '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")'}
     ]
@@ -89,14 +90,24 @@ function situationJSONToString (situation) {
 }
 
 // pre-process the input for the TTS model
-function sanitizeStringForTTS (s) {
-  return s
+function sanitizeStringForTTS (s, gameId) {
+  let ret = s
     .replace(/Starcraft: Brood War/ig, 'Starcraft') // remove "Brood War" part from the game name, because noone says it. still, we need to include it in ChatGPT input, because it talks about Marauders and Medivacs if we don't :)
     .replace(/Hydralisk/ig, 'Hi-dra-lisk')
     .replace(/Patreon/ig, 'Pae-treon')
     .replaceAll(', ', ' ') // remove commas from the output, because TTS interprets them as uncomfortably long pauses
     .replaceAll('"', '') // remove the surrounding ""
     .replace(/^\s+|\s+$/g, '') // trim leading & trailing whitespaces & newlines
+
+  // limit the occurences of "who will come out on top?" goddammit
+  if (s.toLowerCase().includes('who will come out on top?')) {
+    if (!Obejct.keys(whoWillComeOutOnTopCounter).includes(gameId)) whoWillComeOutOnTopCounter[gameId] = 0
+    whoWillComeOutOnTopCounter[gameId] = whoWillComeOutOnTopCounter[gameId] + 1
+
+    if (whoWillComeOutOnTopCounter[gameId] > 2) ret = ret.replace(/who will come out on top\?/ig, '')
+  }
+
+  return ret
 }
 
 // get natural language description of a situation from ChatGPT
@@ -111,15 +122,14 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         const res = await chatGPTAPI.sendMessage(
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
           'I will provide a brief summary of current in-game situation and you use that information to cast the game.' + '\n' +
-          'Reply with 55 words or less.' + '\n' +
-          'Don\'t ask who will come out on top more than twice.' + '\n\n' +
+          'Reply with 55 words or less.' + '\n\n' +
           stringInputForChatGPT)
 
         // save the id of this message to our map so we can continue the message chain from here
         gameIdToLastMessageIdMap[gameId] = res.id
 
         // return the response from ChatGPT
-        return sanitizeStringForTTS(res.text)
+        return sanitizeStringForTTS(res.text, gameId)
       } else {
         // if we already have the ChatGPT id for the previous message for this gameId, use it when we send the message to ChatGPT
         const res = await chatGPTAPI.sendMessage(stringInputForChatGPT, {
@@ -130,7 +140,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         gameIdToLastMessageIdMap[gameId] = res.id
 
         // return the response from ChatGPT
-        return sanitizeStringForTTS(res.text)
+        return sanitizeStringForTTS(res.text, gameId)
       }
 
     } else {
