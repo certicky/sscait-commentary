@@ -20,9 +20,8 @@ import {
 
 // GLOBAL VARS
 const chatGPTAPI = new ChatGPTAPI({ apiKey: openAIAPIKey })
-const gameIdToLastMessageIdMap = {}
+const gameData = {}
 const fillerCooldownUntil = {}
-const whoWillComeOutOnTopCounter = {}
 
 // log in to ChatGPT and start a session
 log('ChatGPT session started.')
@@ -45,15 +44,15 @@ await process.on('exit', (code) => { execSync('killall tts-server', { stdio: 'ig
 log('TTS server starting at port ' + (listenPort + 1))
 
 // custom log function that logs text in a file of max. 1000 lines and also prints it
-function log(text) {
+function log (text) {
   try {
-    let data = fs.readFileSync("log.txt", "utf-8")
-    let lines = data.split("\n")
+    const data = fs.readFileSync('log.txt', 'utf-8')
+    let lines = data.split('\n')
     if (lines.length >= 1000) {
       lines = lines.slice(lines.length - 999)
     }
     lines.push(text)
-    fs.writeFileSync("log.txt", lines.join("\n"))
+    fs.writeFileSync('log.txt', lines.join('\n'))
     console.log(text)
   } catch (err) {
     console.error(err)
@@ -74,9 +73,9 @@ function situationJSONToString (situation) {
       { id: 'fillerSummary', cooldownSeconds: 60, text: '(now summarize the game so far to fill some time)' },
       { id: 'fillerSummaryCasualties', cooldownSeconds: 60 * 5, text: '(now summarize how much both players lost in this game so far and who\'s in a better shape)' },
       { id: 'fillerCliche', cooldownSeconds: 60, text: '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation.)' },
-      { id: 'fillerPatreon', cooldownSeconds: 60*60, text: '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
-      { id: 'fillerTwitchYoutube', cooldownSeconds: 60*45, text: '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")'},
-      { id: 'fillerAnecdote', cooldownSeconds: 60*20, text: '(now say some interesting anecdote from the world of professional starcraft or its pro players)'}
+      { id: 'fillerPatreon', cooldownSeconds: 60 * 60, text: '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
+      { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, text: '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
+      { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, text: '(now say some interesting anecdote from the world of professional starcraft or its pro players)' }
     ]
 
     const now = Date.now() / 1000 // current unix timestamp in seconds
@@ -104,10 +103,10 @@ function sanitizeStringForTTS (s, gameId) {
 
   // limit the occurences of "who will come out on top?" goddammit
   if (s.toLowerCase().includes('who will come out on top?')) {
-    if (!Obejct.keys(whoWillComeOutOnTopCounter).includes(gameId)) whoWillComeOutOnTopCounter[gameId] = 0
-    whoWillComeOutOnTopCounter[gameId] = whoWillComeOutOnTopCounter[gameId] + 1
+    if (!Obejct.keys(gameData).includes(gameId) || !gameData[gameId].whoWillComeOutOnTopCounter) gameData[gameId].whoWillComeOutOnTopCounter = 0
+    gameData[gameId].whoWillComeOutOnTopCounter = gameData[gameId].whoWillComeOutOnTopCounter + 1
 
-    if (whoWillComeOutOnTopCounter[gameId] > 2) ret = ret.replace(/who will come out on top\?/ig, '')
+    if (gameData[gameId].whoWillComeOutOnTopCounter > 2) ret = ret.replace(/who will come out on top\?/ig, '')
   }
 
   return ret
@@ -118,9 +117,8 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
   try {
     const stringInputForChatGPT = situationJSONToString(situation)
     if (stringInputForChatGPT) {
-
       // if gameId changed just now, start a new message chain (conversation) for this new game
-      if (!Object.keys(gameIdToLastMessageIdMap).includes(gameId)) {
+      if (!Object.keys(gameData).includes(gameId)) {
         // send an initial message with parentMessageId set to null to init a new message chain (conversation)
         const res = await chatGPTAPI.sendMessage(
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
@@ -129,23 +127,22 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
           stringInputForChatGPT)
 
         // save the id of this message to our map so we can continue the message chain from here
-        gameIdToLastMessageIdMap[gameId] = res.id
+        gameData[gameId].lastMessageId = res.id
 
         // return the response from ChatGPT
         return sanitizeStringForTTS(res.text, gameId)
       } else {
         // if we already have the ChatGPT id for the previous message for this gameId, use it when we send the message to ChatGPT
         const res = await chatGPTAPI.sendMessage(stringInputForChatGPT, {
-          parentMessageId: gameIdToLastMessageIdMap[gameId]
+          parentMessageId: gameData[gameId].lastMessageId
         })
 
         // save the id of this message to our map so we can continue the message chain from here
-        gameIdToLastMessageIdMap[gameId] = res.id
+        dameData[gameId].lastMessageId = res.id
 
         // return the response from ChatGPT
         return sanitizeStringForTTS(res.text, gameId)
       }
-
     } else {
       // if we have nothing to talk about at this moment, just return null
       return null
@@ -177,7 +174,7 @@ app.get('/', async (req, res) => {
 
   log('==========================================================')
   log('gameId: ' + gameId)
-  log('last message in msg chain: ' + gameIdToLastMessageIdMap[gameId])
+  log('last message in msg chain: ' + gameData[gameId]?.lastMessageId)
   log('current time filler CDs: ' + JSON.stringify(fillerCooldownUntil))
   log(req.originalUrl)
   log('==========================================================')
@@ -222,7 +219,7 @@ app.get('/', async (req, res) => {
       })
 
       // make out.wav faster and lower pitch using sox (it just sounds a bit better this way)
-      //await execSync('sox /tmp/commentary.wav /tmp/out.wav pitch -350 tempo -s 1.35 vol 10 dB', { stdio: 'ignore' })
+      // await execSync('sox /tmp/commentary.wav /tmp/out.wav pitch -350 tempo -s 1.35 vol 10 dB', { stdio: 'ignore' })
       await execSync('sox /tmp/commentary.wav /tmp/out.wav tempo -s 1.35 vol 10 dB', { stdio: 'ignore' })
 
       // send the finished file to client
@@ -232,8 +229,6 @@ app.get('/', async (req, res) => {
       // there was nothing to say right now, so we just wait for a few seconds and return HTTP 204 (no content)
       await new Promise(resolve => setTimeout(resolve, 5000))
       return res.status(204).send({ message: 'there was nothing to say at the moment' })
-
-
     }
   } catch (err) {
     return res.status(500).send({ error: err.message })
