@@ -74,7 +74,8 @@ function situationJSONToString (situation) {
       { id: 'fillerSummary', cooldownSeconds: 60, text: '(now summarize the game so far to fill some time)' },
       { id: 'fillerCliche', cooldownSeconds: 60, text: '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation.)' },
       { id: 'fillerPatreon', cooldownSeconds: 60*60, text: '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
-      { id: 'fillerTwitchYoutube', cooldownSeconds: 60*45, text: '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")'}
+      { id: 'fillerTwitchYoutube', cooldownSeconds: 60*45, text: '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")'},
+      { id: 'fillerAnecdote', cooldownSeconds: 60*20, text: '(now say some interesting anecdote from the world of professional starcraft or its pro players)'}
     ]
 
     const now = Date.now() / 1000 // current unix timestamp in seconds
