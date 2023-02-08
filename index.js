@@ -103,7 +103,7 @@ function sanitizeStringForTTS (s, gameId) {
 
   // limit the occurences of "who will come out on top?" goddammit
   if (s.toLowerCase().includes('who will come out on top?')) {
-    if (!Obejct.keys(gameData).includes(gameId) || !gameData[gameId].whoWillComeOutOnTopCounter) gameData[gameId].whoWillComeOutOnTopCounter = 0
+    if (!Object.keys(gameData).includes(gameId) || !gameData[gameId].whoWillComeOutOnTopCounter) gameData[gameId].whoWillComeOutOnTopCounter = 0
     gameData[gameId].whoWillComeOutOnTopCounter = gameData[gameId].whoWillComeOutOnTopCounter + 1
 
     if (gameData[gameId].whoWillComeOutOnTopCounter > 2) ret = ret.replace(/who will come out on top\?/ig, '')
