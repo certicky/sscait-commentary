@@ -61,8 +61,28 @@ function log (text) {
 
 // converts a situation in JSON array string into a string that will be sent to ChatGPT
 // NOTE: if the passed situation array is empty, and we have no available time fillers, it returns null
-function situationJSONToString (situation) {
+function situationJSONToString (situation, gameId) {
   const situationArray = JSON.parse(situation)
+
+  // extract some game-related info (like bot names) from the initial game start messages
+  const player1InfoMsg = situationArray.find(s => s.toLowerCase().replaceAll(' ','').includes('player1iscalled'))
+  const player2InfoMsg = situationArray.find(s => s.toLowerCase().replaceAll(' ','').includes('player2iscalled'))
+  if (player1InfoMsg) {
+    const botName = player1InfoMsg.substring(player1InfoMsg.indexOf('is called') + 9, player1InfoMsg.indexOf('and plays as')).trim()
+    const botRace = player1InfoMsg.substring(player1InfoMsg.indexOf('and plays as') + 12).replace('Unknown', 'Random').trim()
+    if (botName && botName !== '')
+    if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
+    gameData[gameId].bot1Name = botName
+    gameData[gameId].bot1Race = botRace
+  }
+  if (player2InfoMsg) {
+    const botName = player2InfoMsg.substring(player2InfoMsg.indexOf('is called') + 9, player2InfoMsg.indexOf('and plays as')).trim()
+    const botRace = player2InfoMsg.substring(player2InfoMsg.indexOf('and plays as') + 12).replace('Unknown', 'Random').trim()
+    if (botName && botName !== '')
+    if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
+    gameData[gameId].bot2Name = botName
+    gameData[gameId].bot2Race = botRace
+  }
 
   if (situationArray?.length) {
     // if we got some situation events, return a situation description for ChatGPT
@@ -115,10 +135,10 @@ function sanitizeStringForTTS (s, gameId) {
 // get natural language description of a situation from ChatGPT
 async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed = 2) {
   try {
-    const stringInputForChatGPT = situationJSONToString(situation)
+    const stringInputForChatGPT = situationJSONToString(situation, gameId)
     if (stringInputForChatGPT) {
       // if gameId changed just now, start a new message chain (conversation) for this new game
-      if (!Object.keys(gameData).includes(gameId)) {
+      if (!Object.keys(gameData).includes(gameId) || !Object.keys(gameData[gameId]).includes(lastMessageId)) {
         // send an initial message with parentMessageId set to null to init a new message chain (conversation)
         const res = await chatGPTAPI.sendMessage(
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
@@ -127,7 +147,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
           stringInputForChatGPT)
 
         // save the id of this message to our map so we can continue the message chain from here
-        gameData[gameId] = {}
+        if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
         gameData[gameId].lastMessageId = res.id
 
         // return the response from ChatGPT
