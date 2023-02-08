@@ -127,6 +127,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
           stringInputForChatGPT)
 
         // save the id of this message to our map so we can continue the message chain from here
+        gameData[gameId] = {}
         gameData[gameId].lastMessageId = res.id
 
         // return the response from ChatGPT
@@ -138,7 +139,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         })
 
         // save the id of this message to our map so we can continue the message chain from here
-        dameData[gameId].lastMessageId = res.id
+        gameData[gameId].lastMessageId = res.id
 
         // return the response from ChatGPT
         return sanitizeStringForTTS(res.text, gameId)
