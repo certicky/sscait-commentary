@@ -7,6 +7,7 @@
 import { ChatGPTAPI } from 'chatgpt'
 import express from 'express'
 import http from 'http'
+import fetch from 'node-fetch'
 import fs from 'fs'
 import {
   execSync,
@@ -19,7 +20,7 @@ import {
 } from './settings.js'
 
 // GLOBAL VARS
-const chatGPTAPI = new ChatGPTAPI({ apiKey: openAIAPIKey })
+const chatGPTAPI = new ChatGPTAPI({ apiKey: openAIAPIKey, completionParams: 'text-chat-davinci-002' })
 const gameData = {}
 const fillerCooldownUntil = {}
 
@@ -61,7 +62,7 @@ function log (text) {
 
 // converts a situation in JSON array string into a string that will be sent to ChatGPT
 // NOTE: if the passed situation array is empty, and we have no available time fillers, it returns null
-function situationJSONToString (situation, gameId) {
+async function situationJSONToString (situation, gameId) {
   const situationArray = JSON.parse(situation)
 
   // extract some game-related info (like bot names) from the initial game start messages
@@ -84,18 +85,43 @@ function situationJSONToString (situation, gameId) {
     gameData[gameId].bot2Race = botRace
   }
 
+  // misc function that uses SSCAIT API to get stats of both bots for 'fillerPlayerStats' time filler
+  const getPlayerStatsText = async () => {
+    if (!gameData[gameId].bot1Name || !gameData[gameId].bot2Name) return null
+    try {
+      const response1 = await fetch('https://sscaitournament.com/api/bots.php?bot=' + encodeURIComponent(gameData[gameId].bot1Name))
+      const json1 = await response1.json()
+      const wins1 = json1[0]?.wins || 0
+      const losses1 = json1[0]?.losses || 0
+      if (wins1 + losses1 === 0) return null
+      const winRate1 = Math.round(wins1 / (wins1 + losses1) * 100)
+
+      const response2 = await fetch('https://sscaitournament.com/api/bots.php?bot=' + encodeURIComponent(gameData[gameId].bot2Name))
+      const json2 = await response2.json()
+      const wins2 = json2[0]?.wins || 0
+      const losses2 = json2[0]?.losses || 0
+      if (wins2 + losses2 === 0) return null
+      const winRate2 = Math.round(wins2 / (wins2 + losses2) * 100)
+      return '(now explain that ' + gameData[gameId].bot1Name + '\'s win rate in the tournament is ' + winRate1 + '% and ' + gameData[gameId].bot2Name + '\'s win rate is ' + winRate2 + '% and what it means for the ongoing game)'
+    } catch (e) {
+      log(e)
+      return null
+    }
+  }
+
   if (situationArray?.length) {
     // if we got some situation events, return a situation description for ChatGPT
     return 'situation:\n' + situationArray.map(s => '- ' + s).join('\n')
   } else {
     // if the array of situation events is empty, return some time filler bs
     const timeFillers = [
-      { id: 'fillerSummary', cooldownSeconds: 60, text: '(now summarize the game so far to fill some time)' },
-      { id: 'fillerSummaryCasualties', cooldownSeconds: 60 * 5, text: '(now summarize how much both players lost in this game so far and who\'s in a better shape)' },
-      { id: 'fillerCliche', cooldownSeconds: 60, text: '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation.)' },
-      { id: 'fillerPatreon', cooldownSeconds: 60 * 60, text: '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
-      { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, text: '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
-      { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, text: '(now say some interesting anecdote from the world of professional starcraft or its pro players)' }
+      { id: 'fillerSummary', cooldownSeconds: 60, getText: async () => '(now summarize the game so far to fill some time)' },
+      { id: 'fillerSummaryCasualties', cooldownSeconds: 60 * 5, getText: async () => '(now summarize how much both players lost in this game so far and who\'s in a better shape)' },
+      { id: 'fillerCliche', cooldownSeconds: 60, getText: async () => '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation.)' },
+      { id: 'fillerPatreon', cooldownSeconds: 60 * 60, getText: async () => '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
+      { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, getText: async () => '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
+      { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, getText: async() => '(now say some interesting anecdote from the world of professional starcraft or its pro players)' },
+      { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText}
     ]
 
     const now = Date.now() / 1000 // current unix timestamp in seconds
@@ -103,7 +129,7 @@ function situationJSONToString (situation, gameId) {
     const randomFiller = currentlyAvailableFillers.length ? currentlyAvailableFillers[Math.floor(Math.random() * currentlyAvailableFillers.length)] : null
     if (randomFiller) {
       fillerCooldownUntil[randomFiller.id] = now + randomFiller.cooldownSeconds
-      return randomFiller.text
+      return await randomFiller.getText()
     } else {
       return null
     }
@@ -135,10 +161,10 @@ function sanitizeStringForTTS (s, gameId) {
 // get natural language description of a situation from ChatGPT
 async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed = 2) {
   try {
-    const stringInputForChatGPT = situationJSONToString(situation, gameId)
+    const stringInputForChatGPT = await situationJSONToString(situation, gameId)
     if (stringInputForChatGPT) {
       // if gameId changed just now, start a new message chain (conversation) for this new game
-      if (!Object.keys(gameData).includes(gameId) || !Object.keys(gameData[gameId]).includes(lastMessageId)) {
+      if (!Object.keys(gameData).includes(gameId) || !Object.keys(gameData[gameId]).includes('lastMessageId')) {
         // send an initial message with parentMessageId set to null to init a new message chain (conversation)
         const res = await chatGPTAPI.sendMessage(
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
