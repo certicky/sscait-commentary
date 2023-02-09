@@ -66,21 +66,19 @@ async function situationJSONToString (situation, gameId) {
   const situationArray = JSON.parse(situation)
 
   // extract some game-related info (like bot names) from the initial game start messages
-  const player1InfoMsg = situationArray.find(s => s.toLowerCase().replaceAll(' ','').includes('player1iscalled'))
-  const player2InfoMsg = situationArray.find(s => s.toLowerCase().replaceAll(' ','').includes('player2iscalled'))
+  const player1InfoMsg = situationArray.find(s => s.toLowerCase().replaceAll(' ', '').includes('player1iscalled'))
+  const player2InfoMsg = situationArray.find(s => s.toLowerCase().replaceAll(' ', '').includes('player2iscalled'))
   if (player1InfoMsg) {
     const botName = player1InfoMsg.substring(player1InfoMsg.indexOf('is called') + 9, player1InfoMsg.indexOf('and plays as')).trim()
     const botRace = player1InfoMsg.substring(player1InfoMsg.indexOf('and plays as') + 12).replace('Unknown', 'Random').trim()
-    if (botName && botName !== '')
-    if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
+    if (botName && botName !== '') { if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {} }
     gameData[gameId].bot1Name = botName
     gameData[gameId].bot1Race = botRace
   }
   if (player2InfoMsg) {
     const botName = player2InfoMsg.substring(player2InfoMsg.indexOf('is called') + 9, player2InfoMsg.indexOf('and plays as')).trim()
     const botRace = player2InfoMsg.substring(player2InfoMsg.indexOf('and plays as') + 12).replace('Unknown', 'Random').trim()
-    if (botName && botName !== '')
-    if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
+    if (botName && botName !== '') { if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {} }
     gameData[gameId].bot2Name = botName
     gameData[gameId].bot2Race = botRace
   }
@@ -120,8 +118,8 @@ async function situationJSONToString (situation, gameId) {
       { id: 'fillerCliche', cooldownSeconds: 60, getText: async () => '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation.)' },
       { id: 'fillerPatreon', cooldownSeconds: 60 * 60, getText: async () => '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
       { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, getText: async () => '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
-      { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, getText: async() => '(now say some interesting anecdote from the world of professional starcraft or its pro players)' },
-      { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText}
+      { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, getText: async () => '(now say some interesting anecdote from the world of professional starcraft or its pro players)' },
+      { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText }
     ]
 
     const now = Date.now() / 1000 // current unix timestamp in seconds
