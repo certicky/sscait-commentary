@@ -20,7 +20,10 @@ import {
 } from './settings.js'
 
 // GLOBAL VARS
-const chatGPTAPI = new ChatGPTAPI({ apiKey: openAIAPIKey, completionParams: 'text-chat-davinci-002' })
+const chatGPTAPI = new ChatGPTAPI({
+  apiKey: openAIAPIKey,
+  completionParams: { model: 'text-curie-001' } // force chatGPTAPI to use simpler model 'text-curie-001', because at the moment it's 10x cheaper than default 'text-davinci-003'
+})
 const gameData = {}
 const fillerCooldownUntil = {}
 
@@ -157,18 +160,23 @@ function sanitizeStringForTTS (s, gameId) {
 }
 
 // get natural language description of a situation from ChatGPT
-async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed = 2) {
+async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed = 1) {
   try {
     const stringInputForChatGPT = await situationJSONToString(situation, gameId)
     if (stringInputForChatGPT) {
       // if gameId changed just now, start a new message chain (conversation) for this new game
       if (!Object.keys(gameData).includes(gameId) || !Object.keys(gameData[gameId]).includes('lastMessageId')) {
         // send an initial message with parentMessageId set to null to init a new message chain (conversation)
-        const res = await chatGPTAPI.sendMessage(
+        const ourMessage =
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
           'I will provide a brief summary of current in-game situation and you use that information to cast the game.' + '\n' +
           'Reply with 55 words or less.' + '\n\n' +
-          stringInputForChatGPT)
+          stringInputForChatGPT
+        log(ourMessage)
+        log('\n ...\n')
+        const res = await chatGPTAPI.sendMessage(ourMessage)
+        log(res.text)
+
 
         // save the id of this message to our map so we can continue the message chain from here
         if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
@@ -178,9 +186,13 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         return sanitizeStringForTTS(res.text, gameId)
       } else {
         // if we already have the ChatGPT id for the previous message for this gameId, use it when we send the message to ChatGPT
-        const res = await chatGPTAPI.sendMessage(stringInputForChatGPT, {
+        const ourMessage = stringInputForChatGPT
+        log(ourMessage)
+        log('\n ...\n')
+        const res = await chatGPTAPI.sendMessage(ourMessage, {
           parentMessageId: gameData[gameId].lastMessageId
         })
+        log(res.text)
 
         // save the id of this message to our map so we can continue the message chain from here
         gameData[gameId].lastMessageId = res.id
@@ -223,8 +235,6 @@ app.get('/', async (req, res) => {
   log('current time filler CDs: ' + JSON.stringify(fillerCooldownUntil))
   log(req.originalUrl)
   log('==========================================================')
-  log(situation)
-  log('\n ...\n')
 
   try {
     const situationArray = JSON.parse(situation)
@@ -242,7 +252,6 @@ app.get('/', async (req, res) => {
 
   const situationNaturalLanguageText = await getTextDescriptionOfSituation(gameId, situation)
 
-  log(situationNaturalLanguageText || '(nothing to say)')
   log('==========================================================')
 
   try {
