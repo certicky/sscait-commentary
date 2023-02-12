@@ -37,7 +37,7 @@ log('ChatGPT session started.')
 //       much slower.
 await execSync('if pgrep tts-server; then pkill tts-server; fi', { stdio: 'inherit' }) // kill previous instances of tts-server
 await spawn('tts-server', [
-  '--model_name=tts_models/en/ljspeech/glow-tts',
+  '--model_name=tts_models/en/ljspeech/vits--neon',
   '--port=' + (listenPort + 1),
   '--use_cuda=true',
   '--debug=false'
