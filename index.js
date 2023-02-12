@@ -18,6 +18,7 @@ import {
   openAIAPIKey,
   listenPort
 } from './settings.js'
+import { getReadableName } from './misc.js'
 
 // GLOBAL VARS
 const chatGPTAPI = new ChatGPTAPI({
@@ -66,7 +67,7 @@ function log (text) {
 // converts a situation in JSON array string into a string that will be sent to ChatGPT
 // NOTE: if the passed situation array is empty, and we have no available time fillers, it returns null
 async function situationJSONToString (situation, gameId) {
-  const situationArray = JSON.parse(situation)
+  let situationArray = JSON.parse(situation)
 
   // extract some game-related info (like bot names) from the initial game start messages
   const player1InfoMsg = situationArray.find(s => s.toLowerCase().replaceAll(' ', '').includes('player1iscalled'))
@@ -77,6 +78,13 @@ async function situationJSONToString (situation, gameId) {
     if (botName && botName !== '') { if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {} }
     gameData[gameId].bot1Name = botName
     gameData[gameId].bot1Race = botRace
+
+    // check if we need to replace the non-readable bot names with something like 'Zerg player'
+    const readableBotName = getReadableName(botName, botRace + ' player')
+    if (readableBotName !== botName) {
+      if (!Object.keys(gameData[gameId]).includes('botNameReplacements')) gameData[gameId].botNameReplacements = []
+      gameData[gameId].botNameReplacements.push({ original: botName, readable: readableBotName})
+    }
   }
   if (player2InfoMsg) {
     const botName = player2InfoMsg.substring(player2InfoMsg.indexOf('is called') + 9, player2InfoMsg.indexOf('and plays as')).trim()
@@ -84,6 +92,30 @@ async function situationJSONToString (situation, gameId) {
     if (botName && botName !== '') { if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {} }
     gameData[gameId].bot2Name = botName
     gameData[gameId].bot2Race = botRace
+
+    // check if we need to replace the non-readable bot names with something like 'Zerg player'
+    const readableBotName = getReadableName(botName, botRace + ' player')
+    if (readableBotName !== botName) {
+      if (!Object.keys(gameData[gameId]).includes('botNameReplacements')) gameData[gameId].botNameReplacements = []
+      gameData[gameId].botNameReplacements.push({ original: botName, readable: readableBotName})
+    }
+  }
+
+  // make sure we don't call both players the same name (like 'Zerg player')
+  if (gameData && Object.keys(gameData).includes(gameId) && gameData[gameId].botNameReplacements && gameData[gameId].botNameReplacements.length === 2 && gameData[gameId].botNameReplacements[0].readable === gameData[gameId].botNameReplacements[1].readable) {
+    gameData[gameId].botNameReplacements[0].readable = 'Player 1'
+    gameData[gameId].botNameReplacements[1].readable = 'Player 2'
+  }
+
+  // actually replace non-readable names in 'situationArray' array with the readable versions
+  if (gameData && Object.keys(gameData).includes(gameId) && gameData[gameId].botNameReplacements && gameData[gameId].botNameReplacements.length) {
+    situationArray = situationArray.map(s => {
+      let ret = s
+      gameData[gameId].botNameReplacements.forEach(r => {
+        ret = ret.replaceAll(r.original, r.readable)
+      })
+      return ret
+    })
   }
 
   // misc function that uses SSCAIT API to get stats of both bots for 'fillerPlayerStats' time filler
