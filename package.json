@@ -4,7 +4,7 @@
     "listen": "node index.js"
   },
   "dependencies": {
-    "chatgpt": "^4.2.0",
+    "chatgpt": "^4.7.2",
     "express": "^4.18.2",
     "node-fetch": "^3.3.0",
     "word-exists": "^1.0.0"

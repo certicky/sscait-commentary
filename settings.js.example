@@ -1,2 +1,6 @@
 export const listenPort = 3000
+
+// either the API key, or the email+password are required, depending on the method of authentication used in a current version
 export const openAIAPIKey = '<YOUR OPENAI API KEY>'
+export const openAIEmail = '<YOUR OPENAI EMAIL>'
+export const openAIPassword = '<YOUR OPENAI PASSWORD>'

@@ -4,7 +4,7 @@
 // Text-To-Speech:  https://github.com/coqui-ai/TTS
 //
 
-import { ChatGPTAPI } from 'chatgpt'
+import { ChatGPTUnofficialProxyAPI } from 'chatgpt'
 import express from 'express'
 import http from 'http'
 import fetch from 'node-fetch'
@@ -15,16 +15,20 @@ import {
 } from 'child_process'
 import process from 'process'
 import {
-  openAIAPIKey,
+  openAIEmail,
+  openAIPassword,
   listenPort
 } from './settings.js'
-import { getReadableName } from './misc.js'
+import {
+  getReadableName,
+  getOpenAIAccessToken
+} from './misc.js'
+
 
 // GLOBAL VARS
-const chatGPTAPI = new ChatGPTAPI({
-  apiKey: openAIAPIKey,
-  completionParams: { model: 'text-curie-001' } // force chatGPTAPI to use simpler model 'text-curie-001', because at the moment it's 10x cheaper than default 'text-davinci-003'
-})
+log('Getting OpenAI access token...')
+const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword)
+const chatGPTAPI = new ChatGPTUnofficialProxyAPI({ accessToken })
 const gameData = {}
 const fillerCooldownUntil = {}
 
@@ -151,7 +155,7 @@ async function situationJSONToString (situation, gameId) {
       { id: 'fillerSummary', cooldownSeconds: 60, getText: async () => '(now summarize the game so far to fill some time)' },
       { id: 'fillerSummaryCasualties', cooldownSeconds: 60 * 5, getText: async () => '(now summarize how much both players lost in this game so far and who\'s in a better shape)' },
       { id: 'fillerCliche', cooldownSeconds: 60, getText: async () => '(now say some general StarCraft commentator cliche that doesn\'t relate to the current game situation.)' },
-      { id: 'fillerPatreon', cooldownSeconds: 60 * 60, getText: async () => '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. but keep this under 35 words.)' },
+      { id: 'fillerPatreon', cooldownSeconds: 60 * 60, getText: async () => '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. But keep this under 35 words.)' },
       { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, getText: async () => '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
       { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, getText: async () => '(now say some interesting anecdote from the world of professional starcraft or its pro players)' },
       { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText }
@@ -202,17 +206,17 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         const ourMessage =
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
           'I will provide a brief summary of current in-game situation and you use that information to cast the game.' + '\n' +
-          'Reply with 55 words or less.' + '\n\n' +
+          'Reply with 55 words or less and don\'t mention commentator names.' + '\n\n' +
           stringInputForChatGPT
         log(ourMessage)
         log('\n ...\n')
         const res = await chatGPTAPI.sendMessage(ourMessage)
         log(res.text)
 
-
         // save the id of this message to our map so we can continue the message chain from here
         if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
         gameData[gameId].lastMessageId = res.id
+        gameData[gameId].conversationId = res.conversationId
 
         // return the response from ChatGPT
         return sanitizeStringForTTS(res.text, gameId)
@@ -222,6 +226,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         log(ourMessage)
         log('\n ...\n')
         const res = await chatGPTAPI.sendMessage(ourMessage, {
+          conversationId: gameData[gameId].conversationId,
           parentMessageId: gameData[gameId].lastMessageId
         })
         log(res.text)
@@ -264,7 +269,7 @@ app.get('/', async (req, res) => {
   log('==========================================================')
   log('gameId: ' + gameId)
   log('last message in msg chain: ' + gameData[gameId]?.lastMessageId)
-  log('current time filler CDs: ' + JSON.stringify(fillerCooldownUntil))
+  log('current time filler cooldowns: ' + JSON.stringify(fillerCooldownUntil))
   log(req.originalUrl)
   log('==========================================================')
 
