@@ -207,7 +207,8 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         const ourMessage =
           'Generate a live commentary of a professional StarCraft: Brood War game in a style of Tastless, Artosis or Day9.' + '\n' +
           'I will provide a brief summary of current in-game situation and you use that information to cast the game.' + '\n' +
-          'Reply with 55 words or less and don\'t mention commentator names.' + '\n\n' +
+          'Reply with 55 words or less.' + '\n' +
+          'Don\'t mention commentator names.' + '\n\n' +
           stringInputForChatGPT
         log(ourMessage)
         log('\n ...\n')
