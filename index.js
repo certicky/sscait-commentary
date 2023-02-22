@@ -158,7 +158,8 @@ async function situationJSONToString (situation, gameId) {
       { id: 'fillerPatreon', cooldownSeconds: 60 * 60, getText: async () => '(now remind watchers they can support "SSCAIT" on Patreon to keep alive the project that combines StarCraft and Artificial Intelligence. But keep this under 35 words.)' },
       { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, getText: async () => '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
       { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, getText: async () => '(now say some interesting anecdote from the world of professional starcraft or its pro players)' },
-      { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText }
+      { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText },
+      { id: 'fillerMechanics', cooldownSeconds: 60 * 10, getText: async () => '(now tell a specific detail about the mechanics of the game, ideally related to this match)' }
     ]
 
     const now = Date.now() / 1000 // current unix timestamp in seconds
