@@ -28,7 +28,7 @@ import {
 // GLOBAL VARS
 log('Getting OpenAI access token...')
 const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword)
-const chatGPTAPI = new ChatGPTUnofficialProxyAPI({ accessToken })
+const chatGPTAPI = new ChatGPTUnofficialProxyAPI({ accessToken, debug: true })
 const gameData = {}
 const fillerCooldownUntil = {}
 
@@ -146,8 +146,8 @@ async function situationJSONToString (situation, gameId) {
     }
   }
 
-  if (situationArray?.length) {
-    // if we got some situation events, return a situation description for ChatGPT
+  if (situationArray?.length >= 2) {
+    // if we got at least 2 situation events, return a situation description for ChatGPT
     return 'situation:\n' + situationArray.map(s => '- ' + s).join('\n')
   } else {
     // if the array of situation events is empty, return some time filler bs
@@ -159,6 +159,7 @@ async function situationJSONToString (situation, gameId) {
       { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, getText: async () => '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
       { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, getText: async () => '(now say some interesting anecdote from the world of professional starcraft or its pro players)' },
       { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText },
+      { id: 'fillerMap', cooldownSeconds: 60 * 25, getText: async () => '(tell us something about the map the game is payed on. use information from Liquipedia if possible)'},
       { id: 'fillerMechanics', cooldownSeconds: 60 * 10, getText: async () => '(now tell a specific detail about the mechanics of the game, ideally related to this match)' }
     ]
 
@@ -167,9 +168,13 @@ async function situationJSONToString (situation, gameId) {
     const randomFiller = currentlyAvailableFillers.length ? currentlyAvailableFillers[Math.floor(Math.random() * currentlyAvailableFillers.length)] : null
     if (randomFiller) {
       fillerCooldownUntil[randomFiller.id] = now + randomFiller.cooldownSeconds
-      return await randomFiller.getText()
+      return await randomFiller.getText() + (situationArray.length ? '\n\nsituation:\n' + situationArray.map(s => '- ' + s).join('\n') : '')
     } else {
-      return null
+      if (situationArray.length) {
+        return 'situation:\n' + situationArray.map(s => '- ' + s).join('\n')
+      } else {
+        return null
+      }
     }
   }
 }
@@ -217,7 +222,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
         log(ourMessage)
         log('\n ...\n')
         const res = await chatGPTAPI.sendMessage(ourMessage)
-        log(res.text)
+        log((res.text && res.text !== '') ? res.text : res)
 
         // save the id of this message to our map so we can continue the message chain from here
         if (!Object.keys(gameData).includes(gameId)) gameData[gameId] = {}
@@ -235,7 +240,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
           conversationId: gameData[gameId].conversationId,
           parentMessageId: gameData[gameId].lastMessageId
         })
-        log(res.text)
+        log((res.text && res.text !== '') ? res.text : res)
 
         // save the id of this message to our map so we can continue the message chain from here
         gameData[gameId].lastMessageId = res.id
