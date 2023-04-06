@@ -27,8 +27,13 @@ import {
 
 // GLOBAL VARS
 log('Getting OpenAI access token...')
-const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword)
-const chatGPTAPI = new ChatGPTUnofficialProxyAPI({ accessToken, debug: true })
+const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword, true)
+if (!accessToken) process.exit(1)
+const chatGPTAPI = new ChatGPTUnofficialProxyAPI({
+  accessToken,
+  apiReverseProxyUrl: 'https://api.pawan.krd/backend-api/conversation',
+  debug: true
+})
 const gameData = {}
 const fillerCooldownUntil = {}
 

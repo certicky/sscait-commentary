@@ -1,5 +1,7 @@
 import wordExists from 'word-exists'
 import { spawn } from 'child_process'
+import { chromium } from 'playwright-extra'
+import stealth from 'puppeteer-extra-plugin-stealth'
 
 // Frequencies of bigrams in English language, according to this paper by Rick Wicklin:
 // https://blogs.sas.com/content/iml/2014/09/26/bigrams.html
@@ -70,28 +72,52 @@ export const getReadableName = (input, fallback) => {
     : fallback
 }
 
-// uses OpenAIAuth.py python script to get OpenAI access token using the email+password
-export const getOpenAIAccessToken = async (email, password) => {
-  return new Promise((resolve, reject) => {
-    const script = spawn('python3', ['./OpenAIAuth.py', email, password])
-    let output = ''
+// gets OpenAI access token using the email+password
+// uses Playwright + puppeteer-extra-plugin-stealth + playwright-extra to bypass the verification
+export const getOpenAIAccessToken = async (email, password, headless = true, retries = 0) => {
+  console.log('Trying to get OpenAI access token: attempt', retries + 1)
+  // add the plugin to Playwright (any number of plugins can be added)
+  await chromium.use(stealth())
 
-    script.stdout.on('data', (data) => {
-      output += data.toString()
-    })
+  // that's it. the rest is Playwright usage as normal
+  const browser = await chromium.launch({ headless })
 
-    script.on('close', (code) => {
-      if (code === 0) {
-        resolve(output)
-      } else {
-        reject('Could not authenticate using OpenAI email+password and OpenAIAuth.py script.')
-        process.exit()
+  const page = await browser.newPage()
+  await page.goto("https://chat.openai.com/auth/login", { waitUntil: "networkidle" })
+  await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 4000 + 1000))) // wait random time
+  try {
+    await page.getByRole('button', { name: 'Log in' }).click()
+  } catch (e) {
+    if (retries < 5) {
+      await browser.close()
+      return await getOpenAIAccessToken(email, password, headless = headless, retries = retries + 1)
+    } else {
+      console.log('Could not get the OpenAI access token.')
+      return null
+    }
+  }
+  await page.getByLabel('Email address').fill(email)
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByLabel('Password').click()
+  await page.getByLabel('Password').fill(password)
+  await page.getByLabel('Password').press('Enter')
+
+  await page.goto("https://chat.openai.com/api/auth/session", { waitUntil: "networkidle" })
+
+  const visibleText = await page.evaluate(() => {
+      function getText(node) {
+        if (node.nodeType === Node.TEXT_NODE) return node.textContent.trim()
+        if (node.nodeType !== Node.ELEMENT_NODE) return ''
+
+        const style = window.getComputedStyle(node)
+        if (style.display === 'none' || style.visibility === 'hidden') return ''
+
+        const childrenText = Array.from(node.childNodes).map(getText).join(' ')
+        return childrenText
       }
-    })
+      return getText(document.body)
   })
+  const parsed = JSON.parse(visibleText)
+  await browser.close()
+  return parsed?.accessToken
 }
-
-//testNames = ['Ibrahim Awwal', 'Tomas Cere', 'Tomas Vajda', 'Marian Devecka', 'UPStarcraftAI', 'Marek Kadek', 'Adrian Sternmuller', 'Jan Pajan', 'Igor Lacik', 'Krasimir Krystev', 'Roman Danielis', 'Matej Istenik', 'Marcin Bartnicki', 'Vladimir Jurenka', 'Dave Churchill', 'Soeren Klett', 'Gabriel Synnaeve', 'ICELab', 'David Hirschberg', 'Florian Richoux', 'Neo Edmund', 'Andrew Smith', 'Oleg Ostroumov', 'Daniel Blackburn', 'Martin Dekar', 'Maja Nemsilajova', 'Vaclav Horazny', 'Jakub Trancik', 'EradicatumXVR', 'Karin Valisova', 'Ivana Kellyerova', 'Marek Kruzliak', 'Ludmila Nemsilajova', 'Martin Strapko', 'Andrej Sekac', 'Matej Kravjar', 'Denis Ivancik', 'Martin Pinter', 'Iron bot', 'La Nuee', 'Lucia Pivackova', 'Martin Rooijackers', 'krasi0', 'Johannes Holzfuss', 'NUS Bot', 'Odin2014', 'Lukas Sedlacek', 'Vojtech Jirsa', 'Marek Suppa', 'Peter Dobsa', 'David Milec', 'tscmoo', 'Simon Prins', 'ASPbot2011', 'Serega', 'Matyas Novy', 'Tomasz Michalski', 'Chris Coxe', 'Gaoyuan Chen', 'tscmooz', 'Carsten Nielsen', 'Bjorn P Mattsson', 'Ian Nicholas DaCosta', 'Sungguk Cha', 'Jon  W', 'Sergei Lebedinskij', 'Aurelien Lermant', 'AILien', 'Rafael Bocquet', 'OpprimoBot', 'Chris Ayers', 'Radim Bobek', 'A Jarocki', 'Sijia Xu', 'tscmoop', 'Pablo Garcia Sanchez', 'Sebastian Mahr', 'Henri Kumpulainen', 'Marek Gajdos', 'JompaBot', 'PeregrineBot', 'insanitybot', 'Zealot Hell', 'Martin Vlcak', 'Nathan a David', 'Jacob Knudsen', 'Travis Shelton', 'VeRLab', 'High School Strats', 'Tae Jun Oh', 'FlashTest', 'LetaBot SSCAI 2015 Final', 'Flash', 'WuliBot', 'FlashZerg', 'Flashrelease', 'Rob Bogie old', 'LetaBot IM noMCTS', 'LetaBot IM noMCTS', 'LetaBot IM noMCTS', 'Zia bot', 'DAIDOES', 'AwesomeBot', 'ButcherBoy', 'Johan Kayser', 'HoangPhuc', 'neverdieTRX', 'LetaBot CIG 2016', 'Christoffer Artmann', 'LetaBot AIIDE 2016', 'MegaBot', 'ZerGreenBot', 'Bereaver', 'Steamhammer', 'BeeBot', 'auxanic', 'Tommy Fang', 'XelnagaII', 'Aman Zargarpur', 'UPStarCraftAI 2016', 'If Bot', 'Bacteria', 'McRave', 'ZurZurZur', 'Stone', 'Newbie Zerg', 'PurpleWave', 'KaonBot', '3 Rax Newbie', '5 Pool', 'Neo Edmund Zerg', 'Woantrik Pouni', 'Marine Hell', 'zLyfe', 'Velicorandom', 'Randomhammer', 'bftjoe', 'Zekhaw', 'NLPRbot', 'Kruecke', 'Blonws31', 'Raze and Plunder', 'Lukas Moravec', 'Rob Bogie', 'Microwave', 'PurpleCheese', 'PurpleSwarm', 'ForceBot', 'Vaclav Bayer', 'Pinfel', 'Dawid Loranc', 'Oyvind Johannessen', 'Hannes Bredberg', 'tscmoor', 'Pascal Vautour', 'Goliat', 'Arrakhammer', 'exampleclient', 'bftjoet', 'Anders Hein', 'zhandong', 'ZergYue', 'Black Crow', 'TyrProtoss', 'ChengweiJiang', 'Simplicity', 'Big eyes', 'Christian McCrave', 'Sparks', 'Antiga', 'JEMMET_old', 'Adrian Mensing', 'JEMMET', 'Yuanheng Zhu', 'AyyyLmao', 'Andrey Kurdiumov', 'Bryan Weber', 'bftjoet', 'Amal Duriseti', 'LetaBot AIIDE 2017', 'PurpleTickles', 'LetaBot CIG 2017', 'PurpleSpirit', 'WOPR Z', 'KillAlll', 'CasiaBot', 'adias', 'Hardcoded', 'Hardcoded', 'ForceBotTest', 'Niels Justesen', 'WillBot', 'MegaBot2017', 'NiteKatT', 'NiteKatP', 'krasi0P', 'ZZZKBot', 'Alice', 'Pineapple Cactus', 'HOLD Z', 'Locutus', 'igjbot', 'UC3ManoloBot', 'Cristhian Alcantara Lopez', '100382319', 'Laura Martin Gallardo', 'Lluvatar', 'Ecgberht', 'CherryPi', 'Guillermo Agitaperas', 'ClumsyBot', 'Hao Pan', 'WillyT', 'Zercgberht', 'Delingvery', 'SALT Bot', 'Toothpick Cactus', 'ggBot', 'MadMixP', 'Korean', 'FTTank', 'MadMixT', 'Fifouille Legend', 'FTTankTER', 'MorglozBot', 'hyeongjin park', 'Fifou Legend', 'CUBOT dupl', 'MadMixZ', 'DaleeTYC', 'tscmoop2', 'Dolphin Bot', 'Protecgberht', 'Middle School Strats', 'BananaBrain', 'Rhonin', 'MDBot', 'GuiBot', 'StyxZ', 'StyxZ2', 'legacy', 'skyFORKnet', 'Junkbot', 'Raphael', 'McRaveZ', 'Fifouille Legend Random', 'Proxy', 'Cydonia', 'UITtest', 'UITtest2', 'High School Strats', 'ABCDxyz', 'Wombat', 'StarCrusher', 'PearEasy', 'SummerHomework', 'Prism Cactus', 'DaQin', 'Assberht', 'SAIDA', 'PurpleWavelet', 'PotatoMasher', 'Oh Fish', 'CherryPi 2018 AIIDE MOD', 'Fresh Meat', 'ChimeraBot', 'JumpyDoggoBot', 'AntigaZ', 'VioletLily', 'FergalOGrady', 'CUBOT', 'Dolphin Bot dupl', 'XIAOYICOG2019', 'PurpleDestiny', 'Stardust', 'RedRum', 'Feint', 'Dragon', 'Boris', 'CherryPiSSCAIT2017', 'BetaStar', 'CherryPiSSCAIT2017 dupl', 'ZNZZBot', 'Crona', 'MadMixR', 'Slater', 'NuiBot', 'KasoBot', 'KangarooBot', 'DTD Bot', 'Amber', 'AmberZ', 'Hopark', 'Emperor Zerg', 'Monster', 'EggBot', 'Vyrebot', 'Bobot', 'Pathos', 'Sune Rasmussen', 'Zerg Hell', 'Terminus', 'Pylon Puller', 'Brainiac', 'MicRobot', 'Infested Artosis', 'Pinfel 2']
-//testNames.forEach(n => {
-//  console.log(getReadableName(n, '---'))
-//})
