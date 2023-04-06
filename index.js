@@ -26,8 +26,9 @@ import {
 
 
 // GLOBAL VARS
+await execSync('DISPLAY=:1 && export DISPLAY')
 log('Getting OpenAI access token...')
-const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword, true)
+const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword, false)
 if (!accessToken) process.exit(1)
 const chatGPTAPI = new ChatGPTUnofficialProxyAPI({
   accessToken,
