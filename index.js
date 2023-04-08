@@ -24,12 +24,11 @@ import {
   getOpenAIAccessToken
 } from './misc.js'
 
-
 // GLOBAL VARS
-await execSync('DISPLAY=:1 && export DISPLAY')
 log('Getting OpenAI access token...')
-const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword, false)
+const accessToken = await getOpenAIAccessToken(openAIEmail, openAIPassword, false, log)
 if (!accessToken) process.exit(1)
+log(accessToken)
 const chatGPTAPI = new ChatGPTUnofficialProxyAPI({
   accessToken,
   apiReverseProxyUrl: 'https://api.pawan.krd/backend-api/conversation',
@@ -93,7 +92,7 @@ async function situationJSONToString (situation, gameId) {
     const readableBotName = getReadableName(botName, botRace + ' player')
     if (readableBotName !== botName) {
       if (!Object.keys(gameData[gameId]).includes('botNameReplacements')) gameData[gameId].botNameReplacements = []
-      gameData[gameId].botNameReplacements.push({ original: botName, readable: readableBotName})
+      gameData[gameId].botNameReplacements.push({ original: botName, readable: readableBotName })
     }
   }
   if (player2InfoMsg) {
@@ -107,7 +106,7 @@ async function situationJSONToString (situation, gameId) {
     const readableBotName = getReadableName(botName, botRace + ' player')
     if (readableBotName !== botName) {
       if (!Object.keys(gameData[gameId]).includes('botNameReplacements')) gameData[gameId].botNameReplacements = []
-      gameData[gameId].botNameReplacements.push({ original: botName, readable: readableBotName})
+      gameData[gameId].botNameReplacements.push({ original: botName, readable: readableBotName })
     }
   }
 
@@ -165,7 +164,7 @@ async function situationJSONToString (situation, gameId) {
       { id: 'fillerTwitchYoutube', cooldownSeconds: 60 * 45, getText: async () => '(now remind watchers that we stream StarCraft bot games 24/7 on "SSCAIT" Twitch and also publish videos with human commentary on Youtube. but keep this under 50 words and don\'t start with word "and")' },
       { id: 'fillerAnecdote', cooldownSeconds: 60 * 20, getText: async () => '(now say some interesting anecdote from the world of professional starcraft or its pro players)' },
       { id: 'fillerPlayerStats', cooldownSeconds: 60 * 10, getText: getPlayerStatsText },
-      { id: 'fillerMap', cooldownSeconds: 60 * 25, getText: async () => '(tell us something about the map the game is payed on. use information from Liquipedia if possible)'},
+      { id: 'fillerMap', cooldownSeconds: 60 * 25, getText: async () => '(tell us something about the map the game is payed on. use information from Liquipedia if possible)' },
       { id: 'fillerMechanics', cooldownSeconds: 60 * 10, getText: async () => '(now tell a specific detail about the mechanics of the game, ideally related to this match)' }
     ]
 
@@ -223,7 +222,7 @@ async function getTextDescriptionOfSituation (gameId, situation, retriesAllowed 
           '- Always only respond with less than 55 words.' + '\n' +
           '- Try to keep track of how much each player lost in the game and use that to estimate who is winning or losing. Losing buildings is worse than losing units.' + '\n' +
           '- Use profane language, slang and puns.' + '\n' +
-          '- Avoid using these words: "fuck"'  + '\n\n' +
+          '- Avoid using these words: "fuck"' + '\n\n' +
           stringInputForChatGPT
         log(ourMessage)
         log('\n ...\n')

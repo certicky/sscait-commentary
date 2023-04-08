@@ -1,5 +1,8 @@
 import wordExists from 'word-exists'
-import { spawn } from 'child_process'
+import {
+  spawn,
+  execSync
+} from 'child_process'
 import { chromium } from 'playwright-extra'
 import stealth from 'puppeteer-extra-plugin-stealth'
 
@@ -74,8 +77,11 @@ export const getReadableName = (input, fallback) => {
 
 // gets OpenAI access token using the email+password
 // uses Playwright + puppeteer-extra-plugin-stealth + playwright-extra to bypass the verification
-export const getOpenAIAccessToken = async (email, password, headless = true, retries = 0) => {
-  console.log('Trying to get OpenAI access token: attempt', retries + 1)
+export const getOpenAIAccessToken = async (email, password, headless = true, log, retries = 0) => {
+  if (!headless) {
+    await execSync('DISPLAY=:1 && export DISPLAY')
+  }
+  log('Trying to get OpenAI access token: attempt', retries + 1)
   // add the plugin to Playwright (any number of plugins can be added)
   await chromium.use(stealth())
 
@@ -83,7 +89,7 @@ export const getOpenAIAccessToken = async (email, password, headless = true, ret
   const browser = await chromium.launch({ headless })
 
   const page = await browser.newPage()
-  await page.goto("https://chat.openai.com/auth/login", { waitUntil: "networkidle" })
+  await page.goto('https://chat.openai.com/auth/login', { waitUntil: 'networkidle' })
   await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 4000 + 1000))) // wait random time
   try {
     await page.getByRole('button', { name: 'Log in' }).click()
@@ -102,20 +108,20 @@ export const getOpenAIAccessToken = async (email, password, headless = true, ret
   await page.getByLabel('Password').fill(password)
   await page.getByLabel('Password').press('Enter')
 
-  await page.goto("https://chat.openai.com/api/auth/session", { waitUntil: "networkidle" })
+  await page.goto('https://chat.openai.com/api/auth/session', { waitUntil: 'networkidle' })
 
   const visibleText = await page.evaluate(() => {
-      function getText(node) {
-        if (node.nodeType === Node.TEXT_NODE) return node.textContent.trim()
-        if (node.nodeType !== Node.ELEMENT_NODE) return ''
+    function getText (node) {
+      if (node.nodeType === Node.TEXT_NODE) return node.textContent.trim()
+      if (node.nodeType !== Node.ELEMENT_NODE) return ''
 
-        const style = window.getComputedStyle(node)
-        if (style.display === 'none' || style.visibility === 'hidden') return ''
+      const style = window.getComputedStyle(node)
+      if (style.display === 'none' || style.visibility === 'hidden') return ''
 
-        const childrenText = Array.from(node.childNodes).map(getText).join(' ')
-        return childrenText
-      }
-      return getText(document.body)
+      const childrenText = Array.from(node.childNodes).map(getText).join(' ')
+      return childrenText
+    }
+    return getText(document.body)
   })
   const parsed = JSON.parse(visibleText)
   await browser.close()
